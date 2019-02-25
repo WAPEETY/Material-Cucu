@@ -20,7 +20,7 @@
 #define YM 9
 #define XP 8
 
-#define BLACK 0x0000 //colori in formato RGB565 (converter: http://www.barth-dev.de/online/rgb565-color-picker/) in ogni caso sono 5 bit per il rosso, 6 per il verde e 5 per il blu
+#define BLACK 0x0000 //colori in formato RGB565 (converter: http://www.barth-dev.de/online/rgb565-color-picker/) in ogni caso sono 5 bit per rosso, 6 per verde e 5 per blu
 #define WHITE 0xFFFF
 #define LIGHT_GRAY 0xC618
 #define INDIGO  0x3A96
@@ -47,14 +47,15 @@ RTC_DS1307 rtc;
 
 void setup(void){
   Serial.begin(9600);
+  Serial2.begin(9600);
   Wire.begin();
   if (!rtc.begin()){
     Serial.println("ERRORE, Ho riscontrato problemi nell'inizializzare una comunicazione con l'RTC");
   }
-//  if (!rtc.isrunning()){
+  if (!rtc.isrunning()){
     Serial.println("il chip non ha le informazioni di data e ora, lo sto settando secondo il compilatore, se credi sia sbagliato sincronizza l'app");
     rtc.adjust(DateTime(__DATE__, __TIME__));
-//    }
+    }
   tft.reset();
   
   uint16_t identifier = tft.readID();
@@ -105,12 +106,12 @@ void setup(void){
 
 void loop() {
   DateTime now = rtc.now();
-    if(Serial.available()) {
+    if(Serial2.available()) {
       comando="";
       connected = true;
       do {
-        if(Serial.available()) {
-          c = Serial.read();
+        if(Serial2.available()) {
+          c = Serial2.read();
           if(c != '<')
             comando += c;
         }
@@ -131,7 +132,7 @@ void loop() {
     ora_int = (ore.toInt());
     minuto_int = (minuti.toInt());
     secondo_int = (secondi.toInt());
-//    rtc.adjust(DateTime(now.year(),now.month(),now.day(),ora_int, minuto_int, secondo_int));
+    rtc.adjust(DateTime(now.year(),now.month(),now.day(),ora_int, minuto_int, secondo_int));
     Serial.println(ora_int);
     Serial.println(minuto_int);
     Serial.println(secondo_int);
