@@ -4,7 +4,7 @@
 #include <Wire.h>
 #include <RTClib.h>
 
-#define LCD_RESET 10 //a 4 pin che usa lo schermo
+#define LCD_RESET A4 //a 4 pin che usa lo schermo
 #define LCD_CS A3
 #define LCD_CD A2
 #define LCD_WR A1 //a1
@@ -34,13 +34,16 @@ TouchScreen ts = TouchScreen(XP, YP, XM, YM, 364);
 RTC_DS1307 rtc;
 
   unsigned long time;
-  unsigned long secondi;
-  unsigned long minuti;
-  unsigned long ore;
+  String secondi;
+  String minuti;
+  String ore;
   unsigned long giorni;
   char c = 'N';
-  String comando = "SALVAMI SULL'SD, CESSO<";
-  bool unix = false;
+  String comando = "$#{GITHUB.COM/WAPEETY}#$";//= "HHMMSSHHMMSSHHMMSSHHMMSSCUSTOM MESSAGE NOT FOUND<"; (custom message = 23)
+  bool connected = false;
+  int ora_int = 0;
+  int minuto_int = 0;
+  int secondo_int = 0;
 
 void setup(void){
   Serial.begin(9600);
@@ -48,10 +51,10 @@ void setup(void){
   if (!rtc.begin()){
     Serial.println("ERRORE, Ho riscontrato problemi nell'inizializzare una comunicazione con l'RTC");
   }
-  if (!rtc.isrunning()){
+//  if (!rtc.isrunning()){
     Serial.println("il chip non ha le informazioni di data e ora, lo sto settando secondo il compilatore, se credi sia sbagliato sincronizza l'app");
     rtc.adjust(DateTime(__DATE__, __TIME__));
-    }
+//    }
   tft.reset();
   
   uint16_t identifier = tft.readID();
@@ -104,15 +107,36 @@ void loop() {
   DateTime now = rtc.now();
     if(Serial.available()) {
       comando="";
+      connected = true;
       do {
         if(Serial.available()) {
           c = Serial.read();
-          comando += c;
+          if(c != '<')
+            comando += c;
         }
     } while(c != '<');
+    for(int i = 0; i<2; i++){
+      ore += comando[i];
+      Serial.println(ore);
+    }
+    for(int i = 2; i<4; i++){
+      minuti += comando[i];
+      Serial.println(minuti);
+    }
+    for(int i = 4; i<6; i++){
+      secondi += comando[i];
+      Serial.println(secondi);
+    }
+    Serial.println(comando);
+    ora_int = (ore.toInt());
+    minuto_int = (minuti.toInt());
+    secondo_int = (secondi.toInt());
+//    rtc.adjust(DateTime(now.year(),now.month(),now.day(),ora_int, minuto_int, secondo_int));
+    Serial.println(ora_int);
+    Serial.println(minuto_int);
+    Serial.println(secondo_int);
     }
   tft.setCursor(10,10);
-  if (unix == false){
   tft.setTextSize(3);
   tft.setTextColor(WHITE, INDIGO);
   if (now.hour() < 10){
@@ -129,16 +153,11 @@ void loop() {
     tft.print("0");
   }
   tft.print(now.second(), DEC);
-  }
-  else{
-  tft.setTextSize(2);
-  tft.print(now.unixtime(), DEC);
-  }
   tft.setCursor(160, 13);
   tft.setTextSize(2);
-  if (comando == "SI<")
+  if (connected == true)
     tft.print("    CONNECTED");
-  else if (comando == "NO<"){
+  else if (connected == false){
     tft.print("NOT CONNECTED");
  }
   tft.setTextColor(WHITE, LIGHT_GRAY);
@@ -148,16 +167,4 @@ void loop() {
   tft.setTextSize(2);
   tft.setCursor(20, 190);
   tft.print(comando);
-  
-//  TSPoint p = ts.getPoint();
-//  if (p.z > ts.pressureThreshhold) {
-//    p.x = map(p.x, TS_MAXX, TS_MINX, 0, 320);
-//    p.y = map(p.y, TS_MAXY, TS_MINY, 0, 480);
-//    if(p.x > 10 && p.x < 150 && p.y > 10 && p.y < 40){
-//      if (unix == false)
-//        unix = true;
-//      else
-//        unix = false;
-//    }
-//  }
 }
