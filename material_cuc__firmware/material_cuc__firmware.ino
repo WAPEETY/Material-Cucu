@@ -1,3 +1,21 @@
+/*
+legenda codici
+**********************************
+* codice    *  descrizione       *
+**********************************
+*    h      * impostazione orario*
+*-----------*--------------------*
+*    n      * notifiche          *
+*-----------*--------------------*
+*    a      * sveglia 1          *
+*-----------*--------------------*
+*    b      * sveglia 2          *
+*-----------*--------------------*
+*    c      * sveglia 3          *
+*-----------*--------------------*
+*    z      * animazione         *
+*-----------*--------------------*/
+
 #include <Elegoo_TFTLCD.h> // libreria di comunicazione tra arduino e display
 #include <Elegoo_GFX.h> // libreria per "effetti" grafici sul display
 #include <TouchScreen.h> // libreria per il touch screen
@@ -44,11 +62,26 @@ File settings; //friendly name per il file che andremo a leggere/scrivere dalla 
   int ora_int = 0; // versione int della stringa ore
   int minuto_int = 0; // versione int della stringa minuti
   int secondo_int = 0; // versione int della stringa secondi
+  char identificatore; //serve ad identificare il tipo di stringa che stiamo ricevendo
+  String message; //notifica
+  String svegliaUnoOre;
+  String svegliaUnoMinuti;
+  String svegliaDueOre;
+  String svegliaDueMinuti;
+  String svegliaTreOre;
+  String svegliaTreMinuti;
+  int svegliaUnoOre_int = 24;
+  int svegliaUnoMinuti_int = 00;
+  int svegliaDueOre_int = 24;
+  int svegliaDueMinuti_int = 00;
+  int svegliaTreOre_int = 24;
+  int svegliaTreMinuti_int = 00;
+  String animazione;
+  int animazione_int = 0;
 
 void setup(void){
   pinMode (CS, OUTPUT); // Serve per portare in LOW il pin per  l'SPI e ricevere correttamente l'indirizzo della SD
   Serial.begin(9600); //Avvia seriale di debug
-  Serial2.begin(9600); //Avvia seriale con il Bluetooth
   Wire.begin(); //Avvia il modulo I2c
   if (!rtc.begin()){ //verifica eventuali errori di boot dell'RTC
     Serial.println("ERRORE, Ho riscontrato problemi nell'inizializzare una comunicazione con l'RTC");
@@ -101,7 +134,7 @@ void setup(void){
   tft.setTextColor(INDIGO, WHITE); // definisce il colore del testo e dello "sfondo" dietro di esso
   tft.setTextSize(2); //definisce la grandezza del testo
   tft.setCursor(10, 44); // imposta dove il seguente testo sará scritto
-  tft.print("NEXT ALARM"); // scrive il testo
+  tft.print("YOUR ALARMS"); // scrive il testo
   tft.setCursor(10, 144);// cambia posizione
   tft.print("CUSTOM MESSAGE");// scrive il testo
   tft.setCursor(160, 13); // cambia posizione
@@ -111,26 +144,29 @@ void setup(void){
 }
 /*FINALMENTE IL SETUP É FINITO*/
 void loop() {
-  DateTime now = rtc.now(); //imposta l'orario dall'RTC
-    if(Serial2.available()) { //verifica se il Bluetooth vuole passarci qualcosa
+    DateTime now = rtc.now(); //imposta l'orario dall'RTC
+    Serial2.begin(9600); //Avvia seriale con il Bluetooth
+    while(Serial2.available()) { //verifica se il Bluetooth vuole passarci qualcosa
       comando=""; //ripulisce la stringa
       connected = true;// segnala che la connessione é avvenuta
       do {                         // IN QUESTE RIGHE
         if(Serial2.available()) {  // (118/120)
           c = Serial2.read();      // ARDUINO RICOMPONE CIÓ CHE HA RICEVUTO IN SERIALE
-          if(c != '<')             // Verifica che il messaggio sia finito e nel caso OVVIAMENTE esclude il carattere da noi scelto per porre fine alla comunicazione
+          if(c != '>')             // Verifica che il messaggio sia finito e nel caso OVVIAMENTE esclude il carattere da noi scelto per porre fine alla comunicazione
             comando += c;          // Aggiunge alla stringa il nuovo carattere appena arrivato
         }
-    } while(c != '<');         // IN QUESTE RIGHE 
-    for(int i = 0; i<2; i++){  // (124/137)
+    }while(c != '>');
+    identificatore = comando [0];
+    if(identificatore == 'h'){
+     for(int i = 1; i<3; i++){  // IN QUESTE RIGHE (125/137)
       ore += comando[i];       // ARDUINO SMONTA LA STRINGA CHE HA RICEVUTO PRENDENDOSI
       Serial.println(ore);     // ORE
     }                          //
-    for(int i = 2; i<4; i++){  //
+    for(int i = 3; i<5; i++){  //
       minuti += comando[i];    //
       Serial.println(minuti);  // MINUTI
     }                          //
-    for(int i = 4; i<6; i++){  //
+    for(int i = 5; i<7; i++){  //
       secondi += comando[i];   //
       Serial.println(secondi); //SECONDI
     }                          //
@@ -141,14 +177,116 @@ void loop() {
     rtc.adjust(DateTime(now.year(),now.month(),now.day(),ora_int, minuto_int, secondo_int));  //Adesso L'RTC finalmente accetta il nuovo orario
     Serial.println(ora_int);     //
     Serial.println(minuto_int);  // 'sta roba é solo per debuggare
-    Serial.println(secondo_int); //
-    settings = SD.open("settings.txt", FILE_WRITE); //Apre (o crea) il file per quelle impostazioni che dobbiamo salvare anche in caso arduino si spenga
-    if (settings) { // se é stato aperto correttamente il file
-      settings.println(comando); //scrive dentro
-      settings.close(); //e lo chiude
+    Serial.println(secondo_int); // 
     }
-    
+    if(identificatore == 'n'){
+      message = "";
+      for(int i = 1; i<23; i++){
+        message += comando[i];
+        Serial.println(message);
+      }
     }
+    if(identificatore == 'a'){
+      svegliaUnoOre = "";
+      svegliaUnoMinuti = "";
+      for(int i = 1; i<3; i++){
+        svegliaUnoOre += comando[i];
+        Serial.println(svegliaUnoOre);
+        }
+      for(int i = 3; i<6; i++){
+        svegliaUnoMinuti += comando[i];
+        Serial.println(svegliaUnoMinuti);
+        }
+      settings = SD.open("settings.txt", FILE_WRITE); //Apre (o crea) il file per quelle impostazioni che dobbiamo salvare anche in caso arduino si spenga
+      if (settings) { // se é stato aperto correttamente il file
+        settings.println(svegliaUnoOre); //scrive dentro
+        settings.println(svegliaUnoMinuti); //scrive dentro
+        settings.close(); //e lo chiude
+        }
+        svegliaUnoOre_int = (svegliaUnoOre.toInt());
+        svegliaUnoMinuti_int = (svegliaUnoMinuti.toInt());
+    }
+    if(identificatore == 'b'){
+      svegliaDueOre = "";
+      svegliaDueMinuti = "";
+      for(int i = 1; i<3; i++){
+        svegliaDueOre += comando[i];
+        Serial.println(svegliaDueOre);
+        }
+      for(int i = 3; i<6; i++){
+        svegliaDueMinuti += comando[i];
+        Serial.println(svegliaDueMinuti);
+        }
+      settings = SD.open("settings.txt", FILE_WRITE); //Apre (o crea) il file per quelle impostazioni che dobbiamo salvare anche in caso arduino si spenga
+      if (settings) { // se é stato aperto correttamente il file
+        settings.println(svegliaDueOre); //scrive dentro
+        settings.println(svegliaDueMinuti); //scrive dentro
+        settings.close(); //e lo chiude
+        }
+        svegliaDueOre_int = (svegliaDueOre.toInt());
+        svegliaDueMinuti_int = (svegliaDueMinuti.toInt());
+    }
+    if(identificatore == 'c'){
+      svegliaTreOre = "";
+      svegliaTreMinuti = "";
+      for(int i = 1; i<3; i++){
+        svegliaTreOre += comando[i];
+        Serial.println(svegliaTreOre);
+        }
+      for(int i = 3; i<6; i++){
+        svegliaTreMinuti += comando[i];
+        Serial.println(svegliaTreMinuti);
+        }
+      settings = SD.open("settings.txt", FILE_WRITE); //Apre (o crea) il file per quelle impostazioni che dobbiamo salvare anche in caso arduino si spenga
+      if (settings) { // se é stato aperto correttamente il file
+        settings.println(svegliaTreOre); //scrive dentro
+        settings.print(svegliaTreMinuti); //scrive dentro
+        settings.close(); //e lo chiude
+        }
+        svegliaTreOre_int = (svegliaTreOre.toInt());
+        svegliaTreMinuti_int = (svegliaTreMinuti.toInt());
+    }
+    if(identificatore == 'z'){
+      animazione = "";
+      for(int i = 1; i<2; i++){
+        animazione += comando[i];
+        Serial.println(animazione);
+      }
+      animazione_int = (animazione.toInt());
+    }
+    }
+    while(!Serial2.available()){
+     DateTime now = rtc.now(); //imposta l'orario dall'RTC
+      if(svegliaUnoOre_int == now.hour() && svegliaUnoMinuti_int == now.minute()){
+        if (animazione_int == 0){
+          Serial.println("SVEGLIATI");
+          canzone();
+        }
+        else if (animazione_int == 1){
+        Serial.println("OOOOH SVEGLIAAAA");
+        canzone();
+      }
+      }
+      if(svegliaDueOre_int == now.hour() && svegliaDueMinuti_int == now.minute()){
+        if (animazione_int == 0){
+          Serial.println("SVEGLIATI");
+          canzone();
+        }
+        else if (animazione_int == 1){
+          Serial.println("OOOOH SVEGLIAAAA");
+          canzone();
+      }
+      }
+      if(svegliaTreOre_int == now.hour() && svegliaTreMinuti_int == now.minute()){
+        if (animazione_int == 0){
+          Serial.println("SVEGLIATI");
+          canzone();
+        }
+        else if (animazione_int == 1){
+          Serial.println("OOOOH SVEGLIAAAA");
+          canzone();
+      }
+      }
   tft.setCursor(10,10); //Per tutto il resto del codice stampa roba sul display
   tft.setTextSize(3);
   tft.setTextColor(WHITE, INDIGO);
@@ -174,10 +312,51 @@ void loop() {
     tft.print("NOT CONNECTED");
  }
   tft.setTextColor(WHITE, LIGHT_GRAY);
-  tft.setTextSize(7);
-  tft.setCursor(60, 75);
-  tft.print("00:00");
+  tft.setTextSize(3);
+  tft.setCursor(14, 75);
+  if (svegliaUnoOre_int < 24){
+    if(svegliaUnoOre_int < 10)
+      tft.print("0");
+  tft.print(svegliaUnoOre_int);
+  tft.print(":");
+  tft.setTextSize(3);
+  if(svegliaUnoMinuti_int < 10)
+      tft.print("0");
+  tft.print(svegliaUnoMinuti_int);
+  tft.setTextSize(2);
+  tft.print(" ");
+  }
+  if (svegliaDueOre_int < 24){
+  tft.setTextSize(3);
+  if(svegliaDueOre_int < 10)
+      tft.print("0");
+  tft.print(svegliaDueOre_int);
+  tft.print(":");
+    if(svegliaDueMinuti_int < 10)
+      tft.print("0");
+  tft.print(svegliaDueMinuti_int);
+  tft.setTextSize(2);
+  tft.print(" ");
+  }
+  if (svegliaTreOre_int < 24){
+    tft.setTextSize(3);
+      if(svegliaTreOre_int < 10)
+        tft.print("0");
+  tft.print(svegliaTreOre_int);
+  tft.print(":");
+    if(svegliaTreMinuti_int < 10)
+        tft.print("0");
+  tft.print(svegliaTreMinuti_int);
+  }
   tft.setTextSize(2);
   tft.setCursor(20, 190);
-  tft.print(comando);
+  tft.print(message);
+    }
+}
+
+void canzone(){
+    tone(44, 698, 100);
+    tone(44, 31, 100);
+    tone(44, 698, 100);
+    tone(44, 31, 300);
 }
